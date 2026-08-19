@@ -1,12 +1,8 @@
-from dataclasses import dataclass
-import enum
-from typing import Generator, Literal, Optional
 from urllib.parse import parse_qs
 
-from pydantic import BaseModel, ConfigDict
 from starlette.datastructures import URL
-from starlette.requests import Request
 
+from .models import MovieItem
 from .jellyfin import Api, MediaBrowserAuth
 from .localisation import MovieMetadata
 
@@ -62,63 +58,6 @@ def deconstruct(data: object) -> list[dict]:
         raise ValueError("Expected 'Items' to contain dictionaries")
 
     return items
-
-
-class ItemType(enum.Enum):
-    Movie = enum.auto()
-    Series = enum.auto()
-    Season = enum.auto()
-    Episode = enum.auto()
-
-
-ITEM_TYPES = {
-    "Movie": ItemType.Movie,
-    "Series": ItemType.Series,
-    "Season": ItemType.Season,
-}
-
-
-def determine_type(item: dict) -> Optional[ItemType]:
-    item_type = item.get("Type", None)
-    if item_type is None:
-        return None
-
-    return ITEM_TYPES.get(item_type, None)
-
-
-class BaseJellyfinItem(BaseModel):
-    """Fields shared by all Jellyfin item kinds we read/write. Not a full model of
-    Jellyfin's item schema. `extra="allow"` preserves any fields we don't declare so
-    round-tripping through model_dump() doesn't drop them."""
-
-    model_config = ConfigDict(extra="allow")
-
-    Id: str
-    Name: Optional[str] = None
-    Overview: Optional[str] = None
-    ProviderIds: Optional[dict[str, str]] = None
-
-
-class MovieItem(BaseJellyfinItem):
-    Type: Literal["Movie"]
-
-
-class SeriesItem(BaseJellyfinItem):
-    Type: Literal["Series"]
-
-
-# TODO: widen to a union (MovieItem | SeriesItem | SeasonItem | EpisodeItem) once
-# those item types have their own transforms.
-JellyfinItem = MovieItem | SeriesItem
-
-
-@dataclass(slots=True)
-class ItemResolution:
-    """A Jellyfin item paired with what's needed to resolve its translated metadata."""
-
-    item: JellyfinItem
-    item_type: ItemType
-    provider_ids: dict[str, str]
 
 
 # def transform_movie(item: dict) -> bool:
@@ -201,12 +140,6 @@ def transform_url(url: URL) -> URL:
 
 #     # # obj["Name"] = "Impractical Jokers: Proof Of Consept"
 #     return modified
-
-
-@dataclass(slots=True)
-class TransformerCtx:
-    request: Request
-    item_type: ItemType
 
 
 class Transformer:
