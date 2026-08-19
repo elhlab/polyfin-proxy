@@ -5,6 +5,8 @@ from urllib.parse import quote_plus, unquote_plus
 import aiohttp
 from starlette.datastructures import Headers
 
+from polyfin.models import Item
+
 
 @dataclass
 class MediaBrowserAuth:
@@ -78,6 +80,11 @@ class Api:
         res.raise_for_status()
 
         return await res.json()
+
+    async def populate_provider_ids(self, item: Item, auth: MediaBrowserAuth):
+        if item.ProviderIds is None:
+            ids = await self.fetch_provider_ids(item.Id, auth)
+            item.ProviderIds = ids
 
     async def fetch_provider_ids(
         self, item_id: str, auth: MediaBrowserAuth

@@ -149,16 +149,6 @@ class Transformer:
     def __init__(self, japi: Api) -> None:
         self.japi = japi
 
-    # TODO: move this to jellyfin, rename to populate_provider_ids which ensures item.ProviderIds exists
-    async def get_provider_ids(
-        self, auth: MediaBrowserAuth, item: dict
-    ) -> dict[str, str]:
-
-        if "ProviderIds" in item:
-            return item["ProviderIds"]
-
-        return await self.japi.fetch_provider_ids(item["Id"], auth)
-
     def transform_movie(self, item: MovieItem, metadata: MovieMetadata) -> bool:
         """Modififies and `MovieIten` in place with the given metadata"""
 
