@@ -1,0 +1,55 @@
+---
+languages:
+  # A list of metadata languages. Languages are matched in order.
+  #
+  # The order defines fallback priority. User locale preferences are matched
+  # against this list dynamically; they do not modify this configuration.
+
+  # this is the imaginary default that the content already is in. But what if an user who has the following accept language header: "fi,en-US;q=0.9,en;q=0.8"
+  # Does the application just in the background fetch this language and silently add it in memory to the config to automatically use this default or should i require the user to input that
+  # Better to detect this dynamically, especially if multiple libraries have different metadata languages, so this does not break with those.
+
+  - id: finnish
+    name: Suomi
+    season_label: "Kausi {{season_num}}"
+    locales:
+      - fi-*
+
+  # Generic identifier for language
+  - id: german-language
+    name: Deutsch
+    season_label: "Staffel {{season_num}}"
+    # Locales to match this language. Supports de-*, en-* as well as hardcoded lists.
+    locales:
+      - de-*
+
+  - id: english
+    name: English
+    season_label: "Season {{season_num}}"
+    locales:
+      - en-*
+
+users:
+  # optional user mapping to allow the administrator to select users default language without requiring them to visit the web interface
+  - id: 3834dsahfjhasfasllkalsf
+    language: german-language
+
+providers:
+  - id: skyhook
+    languages:
+      german-language: de-DE
+      english: en-US
+    handles:
+      - movie
+      - show
+      - season
+      - episode
+  
+  - id: tmdb
+    languages:
+      german-language: German
+      english: English
+    handles:
+      - movie
+    arguments:
+      api_key: "<apiKey>"

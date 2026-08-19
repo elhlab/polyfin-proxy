@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 import enum
-from typing import Generator, Optional
+from typing import Generator, Literal, Optional
 from urllib.parse import parse_qs
 
+from pydantic import BaseModel, ConfigDict
 from starlette.datastructures import URL
 from starlette.requests import Request
 
-from localisation import Localiser
-
-from .jellyfin import Api, MediaBrowserAuth, extract_mediabrowser_auth
+from .jellyfin import Api, MediaBrowserAuth
+from .localisation import MovieMetadata
 
 TRANSFORMABLE_PATHS = {
     "/Users/{id}/Items",
@@ -25,7 +25,8 @@ TRANSFORMABLE_PATHS = {
 HEX_CHARS = set("0123456789abcdef")
 
 
-def normalize_path(path: str) -> str:
+def canonicalize_path(path: str) -> str:
+    """Replace 32-character hexadecimal path segments with ``{id}`` for easy comparation."""
     return "/" + "/".join(
         (
             "{id}"
@@ -37,25 +38,30 @@ def normalize_path(path: str) -> str:
 
 
 def is_transformable_path(path: str) -> bool:
-    return normalize_path(path) in TRANSFORMABLE_PATHS
+    return canonicalize_path(path) in TRANSFORMABLE_PATHS
 
 
-def deconstruct(data) -> Generator[dict, None, None]:
-    if isinstance(data, dict):
-        items = data.get("Items", None)
-        if items is not None:
-            yield from deconstruct(items)
-        else:
-            yield data
+def deconstruct(data: object) -> list[dict]:
+    if isinstance(data, list):
+        if not all(isinstance(item, dict) for item in data):
+            raise ValueError("Expected a list of dictionaries")
 
-    elif isinstance(data, list):
-        for item in data:
-            yield from deconstruct(item)
+        return data
 
-    else:
-        raise ValueError(
-            f"Unable to unpack items. Received invalid value '{data}' of type '{type(data)}'"
-        )
+    if not isinstance(data, dict):
+        raise ValueError(f"Expected dict or list, got {type(data).__name__}")
+
+    items = data.get("Items")
+    if not isinstance(items, list):
+        return [data]
+
+    if not isinstance(items, list):
+        raise ValueError("Expected 'Items' to be a list")
+
+    if not all(isinstance(item, dict) for item in items):
+        raise ValueError("Expected 'Items' to contain dictionaries")
+
+    return items
 
 
 class ItemType(enum.Enum):
@@ -78,6 +84,41 @@ def determine_type(item: dict) -> Optional[ItemType]:
         return None
 
     return ITEM_TYPES.get(item_type, None)
+
+
+class BaseJellyfinItem(BaseModel):
+    """Fields shared by all Jellyfin item kinds we read/write. Not a full model of
+    Jellyfin's item schema. `extra="allow"` preserves any fields we don't declare so
+    round-tripping through model_dump() doesn't drop them."""
+
+    model_config = ConfigDict(extra="allow")
+
+    Id: str
+    Name: Optional[str] = None
+    Overview: Optional[str] = None
+    ProviderIds: Optional[dict[str, str]] = None
+
+
+class MovieItem(BaseJellyfinItem):
+    Type: Literal["Movie"]
+
+
+class SeriesItem(BaseJellyfinItem):
+    Type: Literal["Series"]
+
+
+# TODO: widen to a union (MovieItem | SeriesItem | SeasonItem | EpisodeItem) once
+# those item types have their own transforms.
+JellyfinItem = MovieItem | SeriesItem
+
+
+@dataclass(slots=True)
+class ItemResolution:
+    """A Jellyfin item paired with what's needed to resolve its translated metadata."""
+
+    item: JellyfinItem
+    item_type: ItemType
+    provider_ids: dict[str, str]
 
 
 # def transform_movie(item: dict) -> bool:
@@ -115,7 +156,7 @@ def determine_type(item: dict) -> Optional[ItemType]:
 
 
 def transform_url(url: URL) -> URL:
-    if normalize_path(url.path) == "/Users/{id}/Items":
+    if canonicalize_path(url.path) == "/Users/{id}/Items":
         parsed_qs = parse_qs(url.query)
         parsed_qs.get("Fields")
 
@@ -171,11 +212,11 @@ class TransformerCtx:
 class Transformer:
 
     japi: Api
-    localiser: Localiser
 
     def __init__(self, japi: Api) -> None:
         self.japi = japi
 
+    # TODO: move this to jellyfin, rename to populate_provider_ids which ensures item.ProviderIds exists
     async def get_provider_ids(
         self, auth: MediaBrowserAuth, item: dict
     ) -> dict[str, str]:
@@ -185,33 +226,24 @@ class Transformer:
 
         return await self.japi.fetch_provider_ids(item["Id"], auth)
 
-    def transform_movie(self, item: dict, ids: dict[str, str], locale_id: str) -> bool:
-        # Fields to modify:
-        # Name, Overview (if item has Overview present)
+    def transform_movie(self, item: MovieItem, metadata: MovieMetadata) -> bool:
+        """Modififies and `MovieIten` in place with the given metadata"""
 
-        # TODO: how do we detect the external id to query the data:
-        # ig name (prefer OriginalTitle for queries) and year should be enough but ig if multiple results query for the externals ids based on the jellyfinid
-        # ofcourse first try to resolve on local database via jellyfin id to get data
+        item.Name = metadata.name
+        item.Overview = metadata.overview
 
-        # best probably is to store a mapping in database for jellyfinid to providerids. This could be loaded initially or during loading
-        # the problem with loading them that when you dont have access to providerIds you are quering a list of items so that increases the amount quite heavily to request.
+        return True
 
-        # we will just mdoify the fields to inlcude ProviderIds fields always.
-        pass
+    # def modify_fields_query()
 
-        # def modify_fields_query()
+    # def modify_fields_query(params: dict) -> str:
 
-        # def modify_fields_query(params: dict) -> str:
-
-    async def transform(self, value: dict | list[dict], request: Request) -> bool:
-        """Modifies a value inplace, returns boolean indicating if modified. Expects a DICT or a LIST of DICT's. Raises ValueError on invalid value"""
-
-        auth = extract_mediabrowser_auth(request.headers)
-        locale_id = await self.localiser.resolve_locale(
-            auth, extract_accepted_locales(request.headers)
-        )
-        if locale_id is None:
-            return False
+    async def transform(
+        self, value: dict | list[dict], auth: MediaBrowserAuth, locale_id: str
+    ) -> bool:
+        """Transforms items found within `value` in place. Caller is responsible for
+        resolving `auth`/`locale_id` and for deciding whether to call this at all
+        when no locale could be resolved. Returns whether anything was modified."""
 
         modified = False
         for item in deconstruct(value):

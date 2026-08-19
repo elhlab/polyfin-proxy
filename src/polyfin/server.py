@@ -12,7 +12,7 @@ from starlette.responses import JSONResponse
 from starlette.requests import Request as StarletteRequest
 from starlette.routing import Route
 
-from .transformations import is_transformable_path, normalize_path, transform
+from .transformations import is_transformable_path, canonicalize_path, transform
 from .forwarder import Forwarder, ForwarderBody
 
 
@@ -44,7 +44,9 @@ async def catch_all(request: StarletteRequest[ApplicationState]):
         return body
 
     print(request.method, request.url)
-    return await forwarder.intercept(cast(StarletteRequest, request), transform_wrapper, transform_url=transform_url)
+    return await forwarder.intercept(
+        cast(StarletteRequest, request), transform_wrapper, transform_url=transform_url
+    )
 
 
 app = Starlette(

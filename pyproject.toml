@@ -17,12 +17,15 @@ dependencies = [
     "aiohttp>=3.14.3",
     "cashews>=7.5.0",
     "multidict>=6.7.1",
+    "pydantic>=2.13.4",
+    "starlette>=1.6.0",
     "uvicorn>=0.52.3",
 ]
 
 [dependency-groups]
 dev = [
     "black>=26.5.1",
+    "pytest>=9.1.1",
 ]
 
 [tool.black]
@@ -30,7 +33,7 @@ line-length = 88
 target-version = ["py312"]
 
 [project.scripts]
-everlink = "polyfin.main:main"
+polyfin = "polyfin.main:main"
 
 [tool.uv]
 package = true

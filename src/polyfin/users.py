@@ -3,7 +3,7 @@ from typing import Optional
 
 from cashews import cache
 
-from jellyfin import Api, MediaBrowserAuth
+from .jellyfin import Api, MediaBrowserAuth
 
 cache.setup("mem://")
 

@@ -10,6 +10,8 @@ from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response, StreamingResponse
 from starlette.datastructures import Headers, URL as StarletteURL
 
+from .headers import get_interception_headers, get_streaming_headers
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,68 +26,6 @@ class ForwarderBody:
         return ForwarderBody(
             content=content, content_type=content_type or self.content_type
         )
-
-
-def headers_as_multidict(headers: Headers | CIMultiDict) -> CIMultiDict:
-    if isinstance(headers, CIMultiDict):
-        return headers
-
-    return CIMultiDict(
-        (key.decode("latin-1"), value.decode("latin-1")) for key, value in headers.raw
-    )
-
-
-def parse_connection_header(value: str) -> list[str]:
-    items = value.split(",")
-
-    return [item.strip() for item in items]
-
-
-HOP_BY_HOP_HEADERS = (
-    "Connection",
-    "Keep-Alive",
-    "Proxy-Authenticate",
-    "Proxy-Authorization",
-    "TE",
-    "Trailer",
-    "Transfer-Encoding",
-    "Upgrade",
-)
-
-
-def strip_hbp_headers(h: Headers | CIMultiDict) -> CIMultiDict:
-    headers = headers_as_multidict(h)
-
-    while "Connection" in headers:
-        conn_headers = parse_connection_header(headers.pop("Connection"))
-
-        for conn_header in conn_headers:
-            headers.popall(conn_header, None)
-
-    for conn_header in HOP_BY_HOP_HEADERS:
-        headers.popall(conn_header, None)
-
-    return headers
-
-
-def get_streaming_headers(h: Headers | CIMultiDict) -> CIMultiDict:
-    headers = strip_hbp_headers(h)
-
-    if "Host" in headers:
-        headers.popall("Host")
-
-    return headers
-
-
-def get_interception_headers(h: Headers | CIMultiDict) -> CIMultiDict:
-    headers = strip_hbp_headers(h)
-
-    STRIPPED_HEADERS = ("Host", "Content-Length", "Content-Encoding", "Accept-Encoding")
-
-    for header in STRIPPED_HEADERS:
-        headers.popall(header, None)
-
-    return headers
 
 
 def log_headers(headers: CIMultiDict | CIMultiDictProxy) -> list[tuple[str, str]]:

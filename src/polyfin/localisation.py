@@ -1,7 +1,16 @@
-from typing import Optional
+from typing import Any, Optional
+
+from pydantic import BaseModel
 
 from .jellyfin import MediaBrowserAuth
 from .users import UserManager
+
+
+class MovieMetadata(BaseModel):
+    """Normalized, translated metadata for a movie, as resolved by a MetadataProvider."""
+
+    name: str
+    overview: Optional[str] = None
 
 
 class Localiser:
