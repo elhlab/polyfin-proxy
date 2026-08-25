@@ -3,7 +3,6 @@ from typing import Any, Optional
 from pydantic import BaseModel
 
 from .jellyfin import MediaBrowserAuth
-from .models import MovieMetadata
 from .users import UserManager
 
 

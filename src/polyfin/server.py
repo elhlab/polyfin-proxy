@@ -12,7 +12,7 @@ from starlette.responses import JSONResponse
 from starlette.requests import Request as StarletteRequest
 from starlette.routing import Route
 
-from .transformations import is_transformable_path, canonicalize_path, transform
+from .transformations import is_transformable_path
 from .forwarder import Forwarder, ForwarderBody
 
 

@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Optional
+from typing import Awaitable, Callable, Optional
 import inspect
 import logging
 
@@ -160,6 +160,3 @@ class Forwarder:
             status_code=response.status,
             headers=headers,
         )
-
-    # TODO: jellyfin allows for https on its own see implemnting seemless intergartaion of the ssl
-    # this can just be done on the uvicorn layer we dont need to worry about it here
