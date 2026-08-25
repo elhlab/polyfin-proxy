@@ -81,7 +81,11 @@ class Api:
 
         return await res.json()
 
+    # TODO: this likely wont work for season or series items
     async def populate_provider_ids(self, item: Item, auth: MediaBrowserAuth):
+        if item.Type not in ["Movie"]:
+            raise ValueError(f"Unexpected item type: '{item.Type}'")
+
         if item.ProviderIds is None:
             ids = await self.fetch_provider_ids(item.Id, auth)
             item.ProviderIds = ids

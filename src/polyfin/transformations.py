@@ -2,7 +2,7 @@ from urllib.parse import parse_qs
 
 from starlette.datastructures import URL
 
-from .models import MovieItem
+from .models import Item, MovieItem, Metadata
 from .jellyfin import Api, MediaBrowserAuth
 from .localisation import MovieMetadata
 
@@ -161,28 +161,21 @@ class Transformer:
 
     # def modify_fields_query(params: dict) -> str:
 
-    async def transform(
-        self, value: dict | list[dict], auth: MediaBrowserAuth, locale_id: str
-    ) -> bool:
+    async def transform(self, item: Item, metadata: Metadata) -> bool:
         """Transforms items found within `value` in place. Caller is responsible for
         resolving `auth`/`locale_id` and for deciding whether to call this at all
         when no locale could be resolved. Returns whether anything was modified."""
 
-        modified = False
-        for item in deconstruct(value):
-            item_type = determine_type(item)
+        # item_type = determine_type(item)
 
-            if item_type is None:
-                continue
+        # if item_type is None:
+        #     continue
 
-            provider_ids = await self.get_provider_ids(auth, item)
+        if item.Type == "Movie":
+            return self.transform_movie(item, metadata)
 
-            item_modified = False
-            if item_type == ItemType.Movie:
-                item_modified = self.transform_movie(item, provider_ids, locale_id)
+        provider_ids = await self.get_provider_ids(auth, item)
 
-            if item_modified:
-                modified = True
-
-        # # Fetch metadata and modify content
-        return modified
+        item_modified = False
+        if item_type == ItemType.Movie:
+            item_modified = self.transform_movie(item, provider_ids, locale_id)

@@ -53,3 +53,6 @@ class MovieMetadata(BaseModel):
 
     name: str
     overview: Optional[str] = None
+
+
+Metadata = Union[MovieMetadata]
