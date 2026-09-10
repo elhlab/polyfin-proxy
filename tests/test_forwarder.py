@@ -1,5 +1,6 @@
 import asyncio
 
+import json
 from typing import Iterable
 
 import aiohttp
@@ -12,7 +13,7 @@ from contextlib import asynccontextmanager
 from starlette.datastructures import URL as StarletteURL
 from starlette.requests import Request as StarletteRequest
 
-from polyfin.forwarder import Forwarder
+from polyfin.forwarder import Forwarder, ForwarderBody
 
 
 def make_request(
@@ -140,3 +141,70 @@ async def test_streaming_of_arbitrary_paths(payload: bytes):
                 )
 
             assert chunk == payload
+
+
+@pytest.mark.asyncio
+async def test_interception():
+
+    async def handler(request):
+        return web.Response(status=201, body=b"unmodified", content_type="text/plain")
+
+    routes = [web.get("/intercept-me", handler)]
+
+    async with create_upstream(routes) as upstream:
+        upstream_url = StarletteURL(str(upstream.make_url("/")))
+
+        async with aiohttp.ClientSession() as session:
+            forwarder = Forwarder(upstream_url, session)
+
+            request = make_request("GET", "/intercept-me")
+
+            async def transform(body: ForwarderBody) -> ForwarderBody:
+                return body.modify(b"modified")
+
+            response = await forwarder.intercept(request, transform)
+
+            assert response.status_code == 201
+            assert response.headers["content-type"] == "text/plain"
+            assert response.body == b"modified"
+
+
+@pytest.mark.asyncio
+async def test_intercept_transform_url():
+    async def handler(request):
+        return web.json_response(
+            {
+                "path": request.path,
+                "query": request.query_string,
+            }
+        )
+
+    routes = [web.get("/original", handler), web.get("/transformed", handler)]
+
+    async with create_upstream(routes) as upstream:
+        async with aiohttp.ClientSession() as session:
+            forwarder = Forwarder(
+                StarletteURL(str(upstream.make_url("/"))),
+                session,
+            )
+
+            def transform_url(url: StarletteURL) -> StarletteURL:
+                return url.replace(
+                    path="/transformed",
+                    query="foo=baz&hello=world",
+                )
+
+            response = await forwarder.intercept(
+                make_request("GET", "/original?foo=bar"),
+                lambda body: body,
+                transform_url=transform_url,
+            )
+
+            content = response.body
+            if isinstance(content, memoryview):
+                content = content.tobytes()
+
+            assert json.loads(content) == {
+                "path": "/transformed",
+                "query": "foo=baz&hello=world",
+            }
