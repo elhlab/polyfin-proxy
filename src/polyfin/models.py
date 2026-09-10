@@ -1,9 +1,9 @@
 import enum
 
 from dataclasses import dataclass
-from typing import Literal, Optional, Union
+from typing import Annotated, Literal, Optional, Union
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ItemType(enum.Enum):
@@ -38,13 +38,13 @@ class SeriesItem(BaseJellyfinItem):
     Type: Literal["Series"]
 
 
-Item = Union[MovieItem, SeriesItem]
+ParsedItem = Annotated[Union[MovieItem, SeriesItem], Field(discriminator="Type")]
 
 
 @dataclass(slots=True)
 class ResolveableItem:
 
-    item: Item
+    item: ParsedItem
     provider_ids: dict[str, str]
 
 

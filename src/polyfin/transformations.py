@@ -2,9 +2,8 @@ from urllib.parse import parse_qs
 
 from starlette.datastructures import URL
 
-from .models import Item, MovieItem, Metadata
-from .jellyfin import Api
-from .localisation import MovieMetadata
+from .models import ParsedItem, MovieItem, Metadata, MovieMetadata
+from .jellyfin import JellyfinApi
 
 TRANSFORMABLE_PATHS = {
     "/Users/{id}/Items",
@@ -13,9 +12,9 @@ TRANSFORMABLE_PATHS = {
     "/Users/{id}/Items/Latest",
     "/Items/{id}",
     "/Items/{id}/Similar",
-    "/Shows/{id}/Episodes",
-    "/Shows/{id}/Seasons",
-    "/Shows/NextUp",
+    # "/Shows/{id}/Episodes",
+    # "/Shows/{id}/Seasons",
+    # "/Shows/NextUp",
 }
 
 HEX_CHARS = set("0123456789abcdef")
@@ -72,9 +71,9 @@ def transform_url(url: URL) -> URL:
 
 class Transformer:
 
-    japi: Api
+    japi: JellyfinApi
 
-    def __init__(self, japi: Api) -> None:
+    def __init__(self, japi: JellyfinApi) -> None:
         self.japi = japi
 
     def transform_movie(self, item: MovieItem, metadata: MovieMetadata) -> bool:
@@ -85,21 +84,12 @@ class Transformer:
 
         return True
 
-    async def transform(self, item: Item, metadata: Metadata) -> bool:
+    async def transform(self, item: ParsedItem, metadata: Metadata) -> bool:
         """Transforms items found within `value` in place. Caller is responsible for
         resolving `auth`/`locale_id` and for deciding whether to call this at all
         when no locale could be resolved. Returns whether anything was modified."""
 
-        # item_type = determine_type(item)
-
-        # if item_type is None:
-        #     continue
-
         if item.Type == "Movie":
             return self.transform_movie(item, metadata)
 
-        provider_ids = await self.get_provider_ids(auth, item)
-
-        item_modified = False
-        if item_type == ItemType.Movie:
-            item_modified = self.transform_movie(item, provider_ids, locale_id)
+        raise ValueError(f"Unexpected item type '{item.Type}'")

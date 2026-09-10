@@ -3,7 +3,7 @@ from typing import Optional
 
 from cashews import cache
 
-from .jellyfin import Api, MediaBrowserAuth
+from .jellyfin import JellyfinApi, MediaBrowserAuth
 
 cache.setup("mem://")
 
@@ -16,7 +16,7 @@ class User:
 
 class UserManager:
 
-    japi: Api
+    japi: JellyfinApi
 
     def __init__(self) -> None:
         pass

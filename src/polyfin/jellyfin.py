@@ -5,7 +5,7 @@ from urllib.parse import quote_plus, unquote_plus
 import aiohttp
 from starlette.datastructures import Headers
 
-from polyfin.models import Item
+from polyfin.models import ParsedItem
 
 
 @dataclass
@@ -55,7 +55,7 @@ class ProviderIdCache(Protocol):
     async def get(self, item_id: str) -> Optional[dict[str, str]]: ...
 
 
-class Api:
+class JellyfinApi:
 
     _session: aiohttp.ClientSession
     _pid_cache: ProviderIdCache
@@ -82,7 +82,7 @@ class Api:
         return await res.json()
 
     # TODO: this likely wont work for season or series items
-    async def populate_provider_ids(self, item: Item, auth: MediaBrowserAuth):
+    async def populate_provider_ids(self, item: ParsedItem, auth: MediaBrowserAuth):
         if item.Type not in ["Movie"]:
             raise ValueError(f"Unexpected item type: '{item.Type}'")
 
