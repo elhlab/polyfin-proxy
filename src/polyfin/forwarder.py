@@ -82,7 +82,7 @@ class Forwarder:
 
         async def reader(response: aiohttp.ClientResponse):
             try:
-                async for chunk in response.content:
+                async for chunk in response.content.iter_any():
                     yield chunk
             except asyncio.CancelledError:
                 logger.info("Downstream cancelled the stream")
