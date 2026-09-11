@@ -23,3 +23,4 @@ Proxy goes in between the jellyfin application and your client edge.
 
 - User selectable locale
 - Series metadata
+- Explore spoofing default audio track based on user locale
