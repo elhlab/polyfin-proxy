@@ -7,16 +7,17 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ItemType(enum.Enum):
-    Movie = enum.auto()
-    Series = enum.auto()
-    Season = enum.auto()
-    Episode = enum.auto()
+    Movie = "MOVIE"
+    Series = "SERIES"
+    Season = "SEASON"
+    Episode = "EPISODE"
 
 
 ITEM_TYPES = {
     "Movie": ItemType.Movie,
     "Series": ItemType.Series,
     "Season": ItemType.Season,
+    "Episode": ItemType.Episode,
 }
 
 
