@@ -51,8 +51,10 @@ class Provider(BaseModel):
 
     id: str
 
-    # List of languages this provider supports, e.g. "german-language" or "english-language"
-    # Used to restrict which providers are used for which languages.
+    # Maps each language id this provider supports (e.g. "german-language") to this
+    # provider's own code/identifier for that language (e.g. "de" for tmdb, or
+    # "German" for tmdb), since different provider APIs use different language codes.
+    # The keys also restrict which providers are used for which languages.
     languages: dict[str, str]
 
     # List of item types this provider should handle, e.g. movie, show, season, episode.
