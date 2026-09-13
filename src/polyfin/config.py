@@ -23,6 +23,18 @@ class Language(BaseModel):
     # List of language tags that match this language, e.g. de-*, en-US, etc.
     locales: list[str]
 
+    @field_validator("locales")
+    @classmethod
+    def _check_locale_format(cls, value: list[str]) -> list[str]:
+        for tag in value:
+            head, sep, tail = tag.partition("-")
+            if not sep or not head or not tail:
+                raise ValueError(
+                    f"invalid locale tag {tag!r}: expected '<lang>-<region>' or '<lang>-*'"
+                )
+
+        return value
+
 
 class User(BaseModel):
     model_config = ConfigDict(frozen=True)

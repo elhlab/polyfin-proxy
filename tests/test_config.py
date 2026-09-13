@@ -186,3 +186,21 @@ def test_user_locale_id_reference_is_case_sensitive():
 
     with pytest.raises(ValidationError, match="unknown locale_id"):
         Config.model_validate(data)
+
+
+@pytest.mark.parametrize("bad_tag", ["en", "-us", "en-", ""])
+def test_malformed_locale_tag_rejected(bad_tag):
+    data = base_config_data()
+    data["languages"][0]["locales"] = [bad_tag]
+
+    with pytest.raises(ValidationError, match="invalid locale tag"):
+        Config.model_validate(data)
+
+
+def test_valid_locale_tag_shapes_accepted():
+    data = base_config_data()
+    data["languages"][0]["locales"] = ["en-*", "en-US", "zh-Hans-CN"]
+
+    config = Config.model_validate(data)
+
+    assert config.languages[0].locales == ["en-*", "en-US", "zh-Hans-CN"]
