@@ -204,3 +204,11 @@ def test_valid_locale_tag_shapes_accepted():
     config = Config.model_validate(data)
 
     assert config.languages[0].locales == ["en-*", "en-US", "zh-Hans-CN"]
+
+
+def test_season_label_missing_placeholder_rejected():
+    data = base_config_data()
+    data["languages"][0]["season_label"] = "Season"
+
+    with pytest.raises(ValidationError, match="season_num"):
+        Config.model_validate(data)

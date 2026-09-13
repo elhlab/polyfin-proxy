@@ -23,6 +23,16 @@ class Language(BaseModel):
     # List of language tags that match this language, e.g. de-*, en-US, etc.
     locales: list[str]
 
+    @field_validator("season_label")
+    @classmethod
+    def _check_season_label_has_placeholder(cls, value: str) -> str:
+        if "{{season_num}}" not in value:
+            raise ValueError(
+                f"invalid season_label {value!r}: must contain the '{{{{season_num}}}}' placeholder"
+            )
+
+        return value
+
     @field_validator("locales")
     @classmethod
     def _check_locale_format(cls, value: list[str]) -> list[str]:
