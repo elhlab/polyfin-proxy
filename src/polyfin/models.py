@@ -6,19 +6,11 @@ from typing import Annotated, Literal, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class ItemType(enum.Enum):
-    Movie = "MOVIE"
-    Series = "SERIES"
-    Season = "SEASON"
-    Episode = "EPISODE"
-
-
-ITEM_TYPES = {
-    "Movie": ItemType.Movie,
-    "Series": ItemType.Series,
-    "Season": ItemType.Season,
-    "Episode": ItemType.Episode,
-}
+class ItemType(str, enum.Enum):
+    Movie = "Movie"
+    Series = "Series"
+    Season = "Season"
+    Episode = "Episode"
 
 
 class BaseJellyfinItem(BaseModel):
@@ -32,11 +24,11 @@ class BaseJellyfinItem(BaseModel):
 
 
 class MovieItem(BaseJellyfinItem):
-    Type: Literal["Movie"]
+    Type: Literal[ItemType.Movie]
 
 
 class SeriesItem(BaseJellyfinItem):
-    Type: Literal["Series"]
+    Type: Literal[ItemType.Series]
 
 
 ParsedItem = Annotated[Union[MovieItem, SeriesItem], Field(discriminator="Type")]

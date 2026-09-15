@@ -17,7 +17,7 @@ def make_config(languages: list[dict]) -> Config:
                 {
                     "id": "provider1",
                     "languages": {languages[0]["id"]: languages[0]["locales"][0]},
-                    "handles": ["MOVIE"],
+                    "handles": ["Movie"],
                 }
             ],
         }

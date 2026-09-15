@@ -16,7 +16,7 @@ def base_config_data() -> dict:
         ],
         "users": [{"id": "a" * 32, "locale_id": "english"}],
         "providers": [
-            {"id": "provider1", "languages": {"english": "en-US"}, "handles": ["MOVIE"]}
+            {"id": "provider1", "languages": {"english": "en-US"}, "handles": ["Movie"]}
         ],
     }
 
@@ -84,7 +84,7 @@ providers:
     languages:
       english: en-US
     handles:
-      - MOVIE
+      - Movie
 """)
 
     config = Config.load_yaml(config_path)
@@ -113,7 +113,7 @@ providers:
     languages:
       english: en-US
     handles:
-      - MOVIE
+      - Movie
 """)
 
     with pytest.raises(ValidationError, match="unknown locale_id"):

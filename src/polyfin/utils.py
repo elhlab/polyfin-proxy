@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import TypeAdapter
 
-from .models import ParsedItem, ItemType, ITEM_TYPES
+from .models import ParsedItem, ItemType
 
 
 def determine_type(item: dict) -> Optional[ItemType]:
@@ -10,7 +10,10 @@ def determine_type(item: dict) -> Optional[ItemType]:
     if item_type is None:
         return None
 
-    return ITEM_TYPES.get(item_type, None)
+    try:
+        return ItemType(item_type)
+    except ValueError:
+        return None
 
 
 def parse_item(data: dict | str) -> ParsedItem:
