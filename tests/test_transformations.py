@@ -1,15 +1,14 @@
 import pytest
-from pydantic import ValidationError
 
+from polyfin.models import ItemType, MovieMetadata, SeriesItem
 from polyfin.transformations import (
-    ItemType,
     MovieItem,
-    SeriesItem,
+    Transformer,
     canonicalize_path,
     deconstruct,
-    determine_type,
     is_transformable_path,
 )
+from polyfin.utils import determine_type
 
 
 @pytest.mark.parametrize(
@@ -49,12 +48,15 @@ def test_normalize_path(path, expected):
 @pytest.mark.parametrize(
     "path",
     [
-        "/Shows/NextUp",
-        "/Users/c5773b1b745d6026a41f2f72c0b86b26/Items/Resume/",
-        "/Items/a7f3c91e5b2d4a6089c1e7f3b5d2a846",
+        "/Users/bf54da3305d84c629a94a7d443307508/Items",
+        "/Users/9b92122c17a349feb29815bda7b10484/Items/91118c19079849a585b6d71c4ab3709a",
+        "/Users/6bad36ab916e4c3db4c7cdf929c390c9/Items/Resume",
+        "/Users/671267cfc269409daa4ec4a959d56367/Items/Latest",
+        "/Items/b98660b5617a473299ddb504b2814624",
+        "/Items/812f0fd4c7ca4429b56cdd8cd5e334d5/Similar",
     ],
 )
-def test_is_transformable_path_returns_true_for_transformable_paths(path):
+def test_supported_paths(path):
     assert is_transformable_path(path)
 
 
@@ -68,6 +70,59 @@ def test_is_transformable_path_returns_true_for_transformable_paths(path):
 )
 def test_is_transformable_path_returns_false_for_generic_paths(path):
     assert not is_transformable_path(path)
+
+
+def test_transform_movie_applies_fields_from_metadata():
+    item = MovieItem.model_validate(
+        {
+            "Id": "abc123",
+            "Type": "Movie",
+            "Name": "Original Name",
+            "Overview": "Original overview.",
+            "ProviderIds": {"Tmdb": "42"},
+            "RunTimeTicks": 123456789,
+        }
+    )
+    metadata = MovieMetadata(name="Translated Name", overview="Translated overview.")
+    before = item.model_dump()
+
+    result = Transformer().transform_movie(item, metadata)
+
+    assert result is True
+    assert item.Name == metadata.name
+    assert item.Overview == metadata.overview
+
+    after = item.model_dump()
+    unchanged_keys = [key for key in before if key not in ("Name", "Overview")]
+    assert all(after[key] == before[key] for key in unchanged_keys)
+
+
+@pytest.mark.asyncio
+async def test_transform_raises_for_unsupported_item_type():
+    item = SeriesItem.model_validate({"Id": "abc123", "Type": "Series"})
+    metadata = MovieMetadata(name="Translated Name")
+
+    with pytest.raises(ValueError):
+        await Transformer().transform(item, metadata)
+
+
+@pytest.mark.asyncio
+async def test_transform_routes_movie_items_to_transform_movie(monkeypatch):
+    item = MovieItem.model_validate({"Id": "abc123", "Type": "Movie"})
+    metadata = MovieMetadata(name="Translated Name")
+    transformer = Transformer()
+    calls = []
+
+    def fake_transform_movie(passed_item, passed_metadata):
+        calls.append((passed_item, passed_metadata))
+        return True
+
+    monkeypatch.setattr(transformer, "transform_movie", fake_transform_movie)
+
+    result = await transformer.transform(item, metadata)
+
+    assert result is True
+    assert calls == [(item, metadata)]
 
 
 SAMPLE_ITEM = {"Hello": "World", "How are you?": "..."}
@@ -115,88 +170,3 @@ def test_deconstruct_errors_out(data):
 )
 def test_determine_type_detects_correctly(item, item_type):
     assert determine_type(item) == item_type
-
-
-@pytest.mark.parametrize(
-    ("model", "data"),
-    [
-        (
-            MovieItem,
-            {
-                "Id": "abc123",
-                "Type": "Movie",
-                "Name": "Some Movie",
-                "Overview": "A movie about things.",
-                "ProviderIds": {"Tmdb": "42"},
-            },
-        ),
-        (
-            SeriesItem,
-            {
-                "Id": "def456",
-                "Type": "Series",
-                "Name": "Some Series",
-                "Overview": "A series about things.",
-                "ProviderIds": {"Tmdb": "99"},
-            },
-        ),
-    ],
-)
-def test_item_parses_known_fields(model, data):
-    item = model.model_validate(data)
-
-    assert item.Id == data["Id"]
-    assert item.Type == data["Type"]
-    assert item.Name == data["Name"]
-    assert item.Overview == data["Overview"]
-    assert item.ProviderIds == data["ProviderIds"]
-
-
-@pytest.mark.parametrize(
-    ("model", "type_value"), [(MovieItem, "Movie"), (SeriesItem, "Series")]
-)
-def test_item_optional_fields_default_to_none(model, type_value):
-    item = model.model_validate({"Id": "abc123", "Type": type_value})
-
-    assert item.Name is None
-    assert item.Overview is None
-    assert item.ProviderIds is None
-
-
-@pytest.mark.parametrize(
-    ("model", "type_value"), [(MovieItem, "Movie"), (SeriesItem, "Series")]
-)
-def test_item_requires_id(model, type_value):
-    with pytest.raises(ValidationError):
-        model.model_validate({"Type": type_value})
-
-
-@pytest.mark.parametrize(
-    ("model", "wrong_type"),
-    [
-        (MovieItem, "Series"),
-        (MovieItem, "Episode"),
-        (SeriesItem, "Movie"),
-        (SeriesItem, "Season"),
-    ],
-)
-def test_item_errors_out_on_mismatched_type(model, wrong_type):
-    with pytest.raises(ValidationError):
-        model.model_validate({"Id": "abc123", "Type": wrong_type})
-
-
-@pytest.mark.parametrize(
-    ("model", "type_value"), [(MovieItem, "Movie"), (SeriesItem, "Series")]
-)
-def test_item_preserves_extra_fields_on_dump(model: MovieItem, type_value):
-    data = {
-        "Id": "abc123",
-        "Type": type_value,
-        "RunTimeTicks": 123456789,
-        "ImageTags": {"Primary": "somehash"},
-    }
-
-    item = model.model_validate(data)
-
-    dump = item.model_dump()
-    assert all(key in dump for key in data.keys())
