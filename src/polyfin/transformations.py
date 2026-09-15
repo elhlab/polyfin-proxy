@@ -38,43 +38,20 @@ def is_transformable_path(path: str) -> bool:
 
 def deconstruct(data: object) -> list[dict]:
     if isinstance(data, list):
-        if not all(isinstance(item, dict) for item in data):
-            raise ValueError("Expected a list of dictionaries")
-
-        return data
-
-    if not isinstance(data, dict):
+        items = data
+    elif isinstance(data, dict):
+        raw_items = data.get("Items")
+        items = raw_items if isinstance(raw_items, list) else [data]
+    else:
         raise ValueError(f"Expected dict or list, got {type(data).__name__}")
 
-    items = data.get("Items")
-    if not isinstance(items, list):
-        return [data]
-
-    if not isinstance(items, list):
-        raise ValueError("Expected 'Items' to be a list")
-
     if not all(isinstance(item, dict) for item in items):
-        raise ValueError("Expected 'Items' to contain dictionaries")
+        raise ValueError("Expected items to be dictionaries")
 
     return items
 
 
-def transform_url(url: URL) -> URL:
-    if canonicalize_path(url.path) == "/Users/{id}/Items":
-        parsed_qs = parse_qs(url.query)
-        parsed_qs.get("Fields")
-
-        # TODO: add ProviderIds to the fields param to force them to be presetn always
-        # idk if this is the smartest way. Ofcourse default to using providerids but there should be a fallback aswell.
-        # its probably better to just overwrite this on sepcific endpoints like we are doing right now and then fallback if there is no providerids present
-
-
 class Transformer:
-
-    japi: JellyfinApi
-
-    def __init__(self, japi: JellyfinApi) -> None:
-        self.japi = japi
 
     def transform_movie(self, item: MovieItem, metadata: MovieMetadata) -> bool:
         """Modififies and `MovieIten` in place with the given metadata"""
